@@ -4,14 +4,28 @@
 #include <stdio.h>
 #include <tchar.h>
 #include "SalesTaxFinder.h"
+#include <string>
 
+using namespace std;
+
+// Comment out below line if you do not want the command window to stay up
 #define SPIN_AT_END
+
+void Test1()
+{
+	SalesTaxFinder finder(2);
+
+	finder.fast_rate_lookup("one");
+	finder.fast_rate_lookup("two");
+	finder.fast_rate_lookup("three");
+	finder.fast_rate_lookup("two"); // Cache should kick in here
+}
 
 int main()
 {
 	LogEvent("Start Main");
 
-	// TODO: tests and such go here
+	Test1();
 
 	LogEvent("End Main");
 

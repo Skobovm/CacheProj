@@ -1,21 +1,44 @@
 #include "SalesTaxFinder.h"
+#include <stdarg.h>
+
+// Comment out the line below if you do not want to see debug output
+#define DEBUG_LOG
 
 using namespace std;
 
-// Someone needs to declare this function
+// NOTE: This can be modified to take in whatever kind of object, as long as it returns a float
+//		 Add a "wait" or countdown loop to make timing more realistic
 template <typename S>
-extern float sales_tax_lookup(S address);
-
-void LogEvent(string eventStr)
+float sales_tax_lookup(S address)
 {
-	cout << eventStr << '\n';
+	// NOTE: This is a terrible way to add delay, and would never go into production code
+	double volatile i = 500000000;
+	while (i > 0)
+	{
+		i--;
+	}
+	return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+}
+
+void LogEvent(const char * format, ...)
+{
+#ifdef DEBUG_LOG
+	char buffer[256];
+	va_list args;
+	va_start(args, format);
+	vsprintf(buffer, format, args);
+	
+	printf(buffer);
+	printf("\n");
+	va_end(args);
+#endif
 }
 
 void Assert(bool condition, string err)
 {
 	if (!condition)
 	{
-		LogEvent("ERROR: " + err);
+		LogEvent("ERROR: %s", err);
 	}
 }
 
@@ -25,58 +48,57 @@ DLLNode<T>::DLLNode(T val)
 	value = val;
 }
 
-template <class T>
-DoublyLinkedQueue<T>::DoublyLinkedQueue()
-{
-	// TODO: consider removing ctor
-}
-
 // Inserts a value into the queue. New values go to tail
 template <class T>
 DLLNode<T>* DoublyLinkedQueue<T>::Enqueue(T value)
 {
 	// Create node and init
-	DLLNode<T> newNode = new DLLNode<T>(value);
-	LogEvent("Inserting new node. Value: " + value);
+	DLLNode<T>* newNode = new DLLNode<T>(value);
+	LogEvent("Inserting new node. Value: %f", value);
 
-	if (tail == nullptr)
+	if (_tail == nullptr)
 	{
 		// Queue is empty
 		LogEvent("Queue is empty");
 
-		tail = &newNode;
-		head = &newNode;
+		_tail = newNode;
+		_head = newNode;
 	}
 	else
 	{
-		tail->next = &newNode;
-		newNode.prev = tail;
-		tail = &newNode;
+		LogEvent("Appending to tail");
+		_tail->next = newNode;
+		newNode->prev = _tail;
+		_tail = newNode;
 	}
+	_count++;
 
-	return &newNode;
+	return newNode;
 }
 
+// Remove the front-most element in the FIFO
 template <class T>
 DLLNode<T>* DoublyLinkedQueue<T>::Dequeue(T* outVal)
 {
 	DLLNode<T>* returnedElement = nullptr;
-	if (head != nullptr)
+	if (_head != nullptr)
 	{
-		returnedElement = head;
-		*outVal = head->value;
+		returnedElement = _head;
+		*outVal = _head->value;
 
-		DLLNode<T>* next = head->next;
-		if (head == tail)
+		DLLNode<T>* next = _head->next;
+		if (_head == _tail)
 		{
 			LogEvent("Dequeing last remaining element");
 		}
 
 		// Remove last element in queue
 		LogEvent("Dequeing head");
-		next->previous = nullptr;
-		delete(head);
-		head = next;
+		next->prev = nullptr;
+		delete(_head);
+		_head = next;
+
+		_count--;
 	}
 	else
 	{
@@ -85,11 +107,12 @@ DLLNode<T>* DoublyLinkedQueue<T>::Dequeue(T* outVal)
 	return returnedElement;
 }
 
+// Move a node in the queue to the front (end of FIFO)
 template <class T>
 void DoublyLinkedQueue<T>::MoveToFront(DLLNode<T>* node)
 {
 	// Tail = front. Do nothing
-	if (node != tail)
+	if (node != _tail)
 	{
 		DLLNode<T>* prev = node->prev;
 		DLLNode<T>* next = node->next;
@@ -102,8 +125,8 @@ void DoublyLinkedQueue<T>::MoveToFront(DLLNode<T>* node)
 		else
 		{
 			// Ensure head is pointing here, then move up
-			Assert(node == head, "Last node is not head");
-			head = node->next;
+			Assert(node == _head, "Last node is not head");
+			_head = node->next;
 		}
 		if (next != nullptr)
 		{
@@ -116,38 +139,40 @@ void DoublyLinkedQueue<T>::MoveToFront(DLLNode<T>* node)
 		}
 
 		// Move to front
-		node->prev = tail;
+		node->prev = _tail;
 		node->next = nullptr;
-		tail->next = node;
-		tail = node;
+		_tail->next = node;
+		_tail = node;
 	}
 }
 
+// Returns number of elements in the FIFO
 template <class T>
 int DoublyLinkedQueue<T>::GetCount()
 {
 	return _count;
 }
 
-template <class T>
-SalesTaxFinder<T>::SalesTaxFinder(int maxEntries)
+// 50K is the default per spec received in email
+SalesTaxFinder::SalesTaxFinder(int maxEntries)
 {
 	_maxEntries = maxEntries;
-	_cacheOrderList = new DoublyLinkedQueue<float>();
-	// TODO: does hash map need to be alloced?
 }
 
-template <class T>
-float SalesTaxFinder<T>::fast_rate_lookup(T address)
+// Look up tax rate for an address with a cache. Fallback to using sales_tax_lookup
+// if the address/tax rate pair is not found
+float SalesTaxFinder::fast_rate_lookup(string address)
 {
 	float taxRate;
+
+	LogEvent("Rate lookup for: %s", address.c_str());
 
 	// Check hash map for address
 	auto searchIter = _addressHashMap.find(address);
 	if (searchIter != _addressHashMap.end())
 	{
 		// Address found in cache
-		LogEvent("Address found");
+		LogEvent("Address found in cache!");
 
 		// Move to front of queue, return rate
 		DLLNode<float>* node = searchIter->second;
@@ -160,7 +185,6 @@ float SalesTaxFinder<T>::fast_rate_lookup(T address)
 		LogEvent("Address not found");
 
 		// Address/tax rate is not in cache. Call sales_tax_lookup
-		// TODO: potentially add telemetry data?
 		taxRate = sales_tax_lookup(address);
 
 		// Check queue size, dequeue element if too large

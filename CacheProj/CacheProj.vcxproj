@@ -147,7 +147,6 @@
   <ItemGroup>
     <ClCompile Include="CacheProj.cpp" />
     <ClCompile Include="SalesTaxFinder.cpp" />
-    <ClCompile Include="SalesTaxFunc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SalesTaxFinder.h" />

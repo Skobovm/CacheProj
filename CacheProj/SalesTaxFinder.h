@@ -10,8 +10,8 @@ class DLLNode
 {
 public:
 	DLLNode(T value);
-	DLLNode<T>* prev;
-	DLLNode<T>* next;
+	DLLNode<T>* prev = nullptr;
+	DLLNode<T>* next = nullptr;
 	T value;
 };
 
@@ -20,7 +20,6 @@ template <class T>
 class DoublyLinkedQueue
 {
 public:
-	DoublyLinkedQueue();
 	DLLNode<T>* Enqueue(T value);
 	DLLNode<T>* Dequeue(T* outVal);
 	void MoveToFront(DLLNode<T>* node);
@@ -34,19 +33,18 @@ private:
 };
 
 // This class will be used to actually find 
-template <class T>
 class SalesTaxFinder
 {
 public:
 	SalesTaxFinder(int maxEntries);
-	float fast_rate_lookup(T address);
+	float fast_rate_lookup(std::string address);
 
 private:
 	int _maxEntries;
 	DoublyLinkedQueue<float> _cacheOrderList;
-	std::unordered_map<T, DLLNode<float>*> _addressHashMap;
+	std::unordered_map<std::string, DLLNode<float>*> _addressHashMap;
 };
 
 // Helper functions
-void LogEvent(std::string eventStr);
+void LogEvent(const char * format, ...);
 void Assert(bool condition, std::string err);
