@@ -58,16 +58,31 @@ DLLNode<T>* DoublyLinkedQueue<T>::Enqueue(T value)
 }
 
 template <class T>
-void DoublyLinkedQueue<T>::Dequeue(T* outVal)
+DLLNode<T>* DoublyLinkedQueue<T>::Dequeue(T* outVal)
 {
+	DLLNode<T>* returnedElement = nullptr;
 	if (head != nullptr)
 	{
+		returnedElement = head;
+		*outVal = head->value;
 
+		DLLNode<T>* next = head->next;
+		if (head == tail)
+		{
+			LogEvent("Dequeing last remaining element");
+		}
+
+		// Remove last element in queue
+		LogEvent("Dequeing head");
+		next->previous = nullptr;
+		delete(head);
+		head = next;
 	}
 	else
 	{
 		LogEvent("Nothing to dequeue");
 	}
+	return returnedElement;
 }
 
 template <class T>
@@ -125,15 +140,58 @@ SalesTaxFinder<T>::SalesTaxFinder(int maxEntries)
 template <class T>
 float SalesTaxFinder<T>::fast_rate_lookup(T address)
 {
-	// TODO: Check hash map for address
+	float taxRate;
 
-	// TODO: If exists, move to front of queue, return rate
+	// Check hash map for address
+	auto searchIter = _addressHashMap.find(address);
+	if (searchIter != _addressHashMap.end())
+	{
+		// Address found in cache
+		LogEvent("Address found");
 
-	// TODO: Address/tax rate is not in cache. Call sales_tax_lookup
+		// Move to front of queue, return rate
+		DLLNode<float>* node = searchIter->second;
+		_cacheOrderList.MoveToFront(node);
 
-	// TODO: Check queue size, dequeue element if too large
+		taxRate = node->value;
+	}
+	else
+	{
+		LogEvent("Address not found");
 
-	// TODO: Enqueue element and get DLLNode* back
+		// Address/tax rate is not in cache. Call sales_tax_lookup
+		// TODO: potentially add telemetry data?
+		taxRate = sales_tax_lookup(address);
 
-	// TODO: Hash the pointer with address as key
+		// Check queue size, dequeue element if too large
+		if (_cacheOrderList.GetCount() >= _maxEntries)
+		{
+			// Since we control the type (float in this case) we do not need to 
+			// free memory, as it's done by dequeue for intrinsic types
+			float last;
+			DLLNode<float>* removedNode = _cacheOrderList.Dequeue(&last);
+
+			bool nodeRemoved = false;
+			for (auto iter = _addressHashMap.begin(); iter != _addressHashMap.end(); ++iter) 
+			{
+				auto nodePtr = iter->second;
+				if (nodePtr == removedNode)
+				{
+					LogEvent("Found old node. Removing");
+					_addressHashMap.erase(iter);
+					nodeRemoved = true;
+					break;
+				}
+			}
+			Assert(nodeRemoved, "Did not find remove node in hash map");
+		}
+
+		// Enqueue element and get DLLNode* back
+		DLLNode<float>* newNode = _cacheOrderList.Enqueue(taxRate);
+
+		// Hash the pointer with address as key
+		_addressHashMap.emplace(address, newNode);
+	}
+
+	return taxRate;
 }

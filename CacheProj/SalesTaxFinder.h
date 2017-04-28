@@ -22,7 +22,7 @@ class DoublyLinkedQueue
 public:
 	DoublyLinkedQueue();
 	DLLNode<T>* Enqueue(T value);
-	void Dequeue(T* outVal);
+	DLLNode<T>* Dequeue(T* outVal);
 	void MoveToFront(DLLNode<T>* node);
 	int GetCount();
 
