@@ -3,11 +3,13 @@
 #include <list>
 #include <string>
 #include <unordered_map>
+#include <iostream>
 
 template <class T>
 class DLLNode
 {
 public:
+	DLLNode(T value);
 	DLLNode<T>* prev;
 	DLLNode<T>* next;
 	T value;
@@ -18,9 +20,9 @@ template <class T>
 class DoublyLinkedQueue
 {
 public:
-	DoublyLinkedQueue(int maxCount);
+	DoublyLinkedQueue();
 	DLLNode<T>* Enqueue(T value);
-	T Dequeue();
+	void Dequeue(T* outVal);
 	void MoveToFront(DLLNode<T>* node);
 	int GetCount();
 
@@ -44,3 +46,7 @@ private:
 	DoublyLinkedQueue<float> _cacheOrderList;
 	std::unordered_map<T, DLLNode<float>*> _addressHashMap;
 };
+
+// Helper functions
+void LogEvent(std::string eventStr);
+void Assert(bool condition, std::string err);
